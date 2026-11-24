@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "proposal-review",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "从甲方视角逐页评测空间智能及行政数字化方案，生成可定位原页的分级修改清单。",
   "repository": "https://github.com/renyuan2/proposal-review-skill",
   "extensions": {

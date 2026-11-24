@@ -1,5 +1,6 @@
 """Confirm the checked-out review plugin matches the published main branch."""
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -31,7 +32,7 @@ def git(*args):
     ).stdout.strip()
 
 
-def main():
+def check_release(update=False):
     try:
         origin = git("remote", "get-url", "origin")
         if origin not in ORIGIN_URLS:
@@ -40,15 +41,23 @@ def main():
         published, ref = git("ls-remote", "--exit-code", "origin", BRANCH).split()
         if ref != BRANCH:
             raise ValueError("未能确认 GitHub 正式发布分支。")
+        if git("status", "--porcelain", "--", str(PLUGIN)):
+            raise ValueError("评测工具有本地改动。请保留改动，并改用干净的仓库副本。")
+        if current != published and update:
+            if git("status", "--porcelain"):
+                raise ValueError("仓库有本地改动，无法自动更新。请保留改动，并改用干净的仓库副本。")
+            git("fetch", "--no-tags", "origin", BRANCH)
+            if git("rev-parse", "FETCH_HEAD") != published:
+                raise ValueError("检查期间 GitHub 发布了新版本。请重新检查。")
+            git("merge", "--ff-only", published)
+            current = git("rev-parse", "HEAD")
         if current != published:
             raise ValueError(
                 f"当前提交 {current[:8]} 与 GitHub 正式版本 {published[:8]} 不一致。"
             )
-        if git("status", "--porcelain", "--", str(PLUGIN)):
-            raise ValueError("当前任务中的评测工具含本地改动。请使用全新的云端任务。")
         manifest = json.loads((ROOT / PLUGIN / "plugin.json").read_text(encoding="utf-8"))
     except (subprocess.SubprocessError, OSError):
-        print("无法读取 GitHub 正式版本。请检查任务是否已连接私有仓库。", file=sys.stderr)
+        print("无法核对或更新 GitHub 正式版本。请检查仓库权限、网络及本地分支。", file=sys.stderr)
         return 1
     except ValueError as error:
         print(error, file=sys.stderr)
@@ -59,4 +68,6 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--update", action="store_true", help="安全快进到已核实的发布版本")
+    raise SystemExit(check_release(parser.parse_args().update))
