@@ -1,0 +1,15 @@
+{
+  "name": "proposal-review-catalog",
+  "interface": {
+    "displayName": "解决方案成果评测"
+  },
+  "plugins": [
+    {
+      "name": "proposal-review",
+      "source": {
+        "source": "local",
+        "path": "./plugins/proposal-review"
+      }
+    }
+  ]
+}

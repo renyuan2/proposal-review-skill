@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>解决方案成果评测</title>
+<style>
+:root {
+  color-scheme: light;
+  --ink: #182a3b;
+  --muted: #4c6071;
+  --line: #d4dee6;
+  --canvas: #f1f5f8;
+  --white: #fff;
+  --blue: #245c78;
+  --focus: #0072bd;
+  --radius: 12px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: var(--canvas); font: 15px/1.65 Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .45; }
+button:focus-visible, select:focus-visible, summary:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: clamp(24px, 2.4vw, 34px); line-height: 1.3; letter-spacing: -.025em; }
+h2 { font-size: 19px; line-height: 1.4; }
+h3 { font-size: 16px; line-height: 1.45; }
+header { background: #142b3d; color: white; }
+.header-inner, main { width: min(1680px, 100%); margin-inline: auto; padding-inline: clamp(18px, 3.1vw, 50px); }
+.header-inner { padding-block: 27px 25px; }
+.headline { display: flex; gap: 12px 20px; flex-wrap: wrap; align-items: center; }
+.verdict { display: inline-flex; align-items: center; background: #dbeaf4; color: #17364b; padding: 2px 12px; font-weight: 700; border-radius: 20px; white-space: nowrap; }
+.verdict.blocked { background: #ffded5; color: #7d2b21; }
+.source { color: #c6d6e2; margin-top: 7px; font-size: 13px; overflow-wrap: anywhere; }
+main { padding-block: 21px 42px; }
+.overview { padding: 16px 20px; background: var(--white); border: 1px solid var(--line); border-inline-start: 4px solid var(--blue); border-radius: var(--radius); }
+.overview p + p { margin-top: 6px; }
+.next { color: var(--blue); font-weight: 650; }
+.workspace { display: grid; grid-template-columns: minmax(280px, .87fr) minmax(0, 1.94fr); gap: 17px; margin-top: 18px; align-items: start; }
+.panel, details.audit { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
+.panel-head { padding: 16px 17px 12px; border-bottom: 1px solid var(--line); }
+.filters, .locations { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters { margin-top: 10px; }
+.filters button, .locations button, .nav-button { border: 1px solid var(--line); background: white; border-radius: 6px; padding: 3px 9px; font-size: 13px; }
+.filters button[aria-pressed="true"], .locations button[aria-pressed="true"] { border-color: var(--blue); background: #e7f1f8; color: #194863; font-weight: 700; }
+.filters button strong { padding-inline-start: 5px; }
+.findings { max-height: 70vh; min-height: 90px; overflow-y: auto; padding: 5px 8px 8px; }
+.finding-category { padding: 8px 2px 5px; border-bottom: 1px solid var(--line); }
+.finding-category:last-child { border-bottom: 0; }
+.finding-category-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 5px 9px; font-size: 15px; color: var(--blue); }
+.finding-category-count { color: var(--muted); font-size: 12px; font-weight: 500; }
+.finding-priority { margin: 4px 9px 0; }
+.finding-row { display: grid; grid-template-columns: minmax(0, 1fr) 38px; align-items: center; }
+.finding { appearance: none; text-align: left; width: 100%; padding: 10px 11px; margin-top: 3px; background: white; border: 1px solid transparent; border-radius: 8px; line-height: 1.5; display: block; }
+.finding-choice { display: grid; justify-items: center; align-items: center; min-height: 44px; cursor: pointer; }
+.finding-choice input { width: 17px; height: 17px; margin: 0; accent-color: var(--blue); cursor: pointer; }
+.finding:hover { background: #f2f6f8; }
+.finding[aria-current="true"] { border-color: #91b4c6; background: #eaf3f8; }
+.finding-title { display: block; margin-top: 4px; font-weight: 670; }
+.finding-meta { color: var(--muted); font-size: 12px; display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.grade { font-weight: 680; border-radius: 5px; padding: 1px 7px; font-size: 12px; white-space: nowrap; }
+.must { color: #932c23; background: #fbe7e3; --mark: #b83b30; --mark-haze: #f5bc9738; }
+.high { color: #80430f; background: #ffeedb; --mark: #b5651f; --mark-haze: #f6ca8738; }
+.medium { color: #385270; background: #e9eff8; --mark: #3c6c9b; --mark-haze: #a9c5e233; }
+.low { color: #3d5b62; background: #eaf2f0; --mark: #3d6a64; --mark-haze: #accfc538; }
+.spoken { color: #614680; background: #f1e9fa; --mark: #7b58a0; --mark-haze: #bda0dd38; }
+.empty { padding: 18px; color: var(--muted); }
+.prompt-builder { border-top: 1px solid var(--line); padding: 12px 14px; }
+.prompt-jump { color: var(--blue); font-size: 13px; }
+.prompt-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 10px; flex-wrap: wrap; }
+.prompt-text { display: block; width: 100%; min-height: 76px; margin-top: 8px; padding: 8px 9px; resize: vertical; border: 1px solid var(--line); border-radius: 6px; background: #f4f7f9; color: inherit; font: inherit; font-size: 13px; line-height: 1.5; }
+.prompt-text:not(:placeholder-shown) { min-height: 132px; }
+.prompt-actions { display: flex; align-items: center; gap: 7px 10px; flex-wrap: wrap; margin-top: 8px; }
+.copy-prompt { font-weight: 680; color: white; background: #205472; border: 1px solid #205472; border-radius: 6px; padding: 5px 10px; font-size: 13px; }
+.view-head { display: flex; gap: 9px 16px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.nav { display: flex; align-items: center; gap: 5px; }
+.nav select { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 3px 25px 3px 8px; font-size: 13px; }
+.nav-button { min-width: 34px; font-size: 17px; line-height: 1.4; }
+.slide-area { background: #e6edf2; padding: clamp(8px, 1.4vw, 17px); border-bottom: 1px solid var(--line); }
+.slide { position: relative; margin: 0 auto; width: 100%; }
+.slide img { display: block; width: 100%; height: auto; border-radius: 3px; box-shadow: 0 1px 6px #243b5020; }
+.marker { position: absolute; z-index: 2; pointer-events: none; border: 2px solid var(--mark); background: var(--mark-haze); border-radius: 4px; }
+.marker.whole { border-width: 3px; background: transparent; }
+.marker[hidden] { display: none; }
+dialog { width: min(1560px, 97vw); max-width: 97vw; max-height: 96vh; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); }
+dialog::backdrop { background: #152936b8; }
+dialog .panel-head { padding-block: 9px; }
+dialog .slide-area { border-bottom: 0; }
+.issue-detail { padding: 15px 18px 19px; }
+.issue-detail h3 { margin-top: 6px; }
+.issue-detail p { margin-top: 7px; }
+.meta { font-size: 13px; color: var(--muted); }
+.locations { margin-top: 11px; }
+blockquote { margin: 10px 0 0; padding: 7px 12px; border-inline-start: 3px solid #afc4d1; background: #f4f7f9; overflow-wrap: anywhere; }
+.issue-label { display: block; margin-bottom: 2px; color: var(--blue); }
+.recommendation { background: #eef5f7; border-left: 3px solid #578c9a; padding: 9px 12px; }
+details.audit { margin-top: 17px; }
+details.audit summary { cursor: pointer; font-weight: 680; padding: 13px 18px; }
+.audit-content { padding: 0 18px 16px; }
+.audiences { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.audience { padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.audience p { margin-top: 5px; }
+.follow-up { font-weight: 650; color: var(--blue); }
+.audience-question { margin-top: 9px; }
+.audience-question + .audience-question { border-top: 1px solid var(--line); padding-top: 4px; }
+.audience-examples { color: var(--muted); font-size: 13px; }
+.audience-examples li + li { margin-top: 5px; }
+.check { display: grid; grid-template-columns: minmax(160px, .95fr) 88px minmax(0, 2.1fr); align-items: baseline; gap: 10px; border-top: 1px solid var(--line); padding: 8px 4px; }
+.check-status { color: var(--blue); font-weight: 680; font-size: 13px; }
+.check-status.problem { color: #932c23; }
+.audit-content ul { margin: 6px 0 11px; padding-inline-start: 22px; }
+.template-rows { margin-top: 9px; }
+.template-row { display: grid; grid-template-columns: minmax(115px, .65fr) minmax(0, 2fr); gap: 8px 14px; border-top: 1px solid var(--line); padding: 9px 0; }
+.template-row p { margin-top: 4px; }
+.template-content { margin-top: 8px; }
+.template-content summary { padding: 3px 0; color: var(--blue); font-size: 13px; }
+.template-content dl { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(0, 2fr); gap: 4px 12px; margin: 5px 0 0; }
+.template-content dt, .template-content dd { margin: 0; padding: 6px 0; border-top: 1px solid var(--line); }
+.template-content dd .check-status { margin-right: 7px; }
+.template-jump { display: inline-block; margin-top: 7px; font-size: 13px; color: var(--blue); }
+.template-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.template-links button { min-height: 28px; font-size: 13px; padding: 3px 8px; }
+@media (max-width: 900px) {
+  .workspace { grid-template-columns: minmax(225px, .85fr) minmax(0, 1.35fr); }
+  .panel-head { padding-inline: 12px; }
+}
+@media (max-width: 650px) {
+  .workspace, .audiences { grid-template-columns: 1fr; }
+  .findings { max-height: 41vh; }
+  .check { grid-template-columns: 1fr auto; gap: 3px 8px; }
+  .check p { grid-column: 1 / -1; }
+  .template-row { grid-template-columns: 1fr; gap: 2px; }
+  .template-content dl { grid-template-columns: 1fr; gap: 0; }
+  .template-content dd { border-top: 0; }
+  .overview { padding: 12px 14px; }
+}
+</style>
+</head>
+<body>
+<header><div class="header-inner">
+  <div class="headline"><h1 id="title"></h1><span id="verdict" class="verdict"></span></div>
+  <p id="source" class="source"></p>
+</div></header>
+<main>
+  <section class="overview" aria-label="评测摘要">
+    <p id="summary"></p>
+    <p id="next-decision" class="next"></p>
+    <div id="template-jump"></div>
+  </section>
+  <div class="workspace">
+    <section class="panel" aria-labelledby="list-title">
+      <div class="panel-head">
+        <div class="view-head">
+          <h2 id="list-title">修改清单</h2>
+          <a class="prompt-jump" id="prompt-jump" href="#prompt-builder">查看修改指令</a>
+        </div>
+        <div id="filters" class="filters" aria-label="按优先级筛选"></div>
+      </div>
+      <div id="findings" class="findings"></div>
+      <section class="prompt-builder" id="prompt-builder" aria-labelledby="prompt-title">
+        <div class="prompt-head">
+          <h3 id="prompt-title"><label for="prompt-text">修改指令</label></h3>
+          <span id="prompt-count" class="meta" role="status">已选 0 条</span>
+        </div>
+        <textarea id="prompt-text" class="prompt-text" rows="3" readonly spellcheck="false" placeholder="勾选意见右侧的方框，生成给编写 Agent 的指令。"></textarea>
+        <div class="prompt-actions">
+          <button type="button" class="copy-prompt" id="copy-prompt" disabled>复制修改指令</button>
+          <span id="copy-status" class="meta" role="status"></span>
+        </div>
+      </section>
+    </section>
+    <section id="page-view" class="panel" aria-labelledby="view-title">
+      <div class="panel-head view-head">
+        <h2 id="view-title">查看原稿</h2>
+        <div class="nav">
+          <button type="button" class="nav-button" id="previous" aria-label="上一页">‹</button>
+          <select id="page-select" aria-label="查看原稿页码"></select>
+          <button type="button" class="nav-button" id="next" aria-label="下一页">›</button>
+          <button type="button" class="nav-button" id="expand" style="font-size:13px">放大</button>
+        </div>
+      </div>
+      <div class="slide-area">
+        <figure class="slide">
+          <img id="page-image" alt="">
+          <div id="marker" class="marker" hidden></div>
+        </figure>
+      </div>
+      <div id="detail" class="issue-detail" aria-live="polite"></div>
+    </section>
+  </div>
+  <details class="audit">
+    <summary>三类甲方读者会问什么</summary>
+    <div id="audiences" class="audit-content audiences"></div>
+  </details>
+  <details class="audit">
+    <summary>十一项检查结论与评测依据</summary>
+    <div id="audit" class="audit-content"></div>
+  </details>
+  <details class="audit" id="template-review">
+    <summary>逐页对照原模板</summary>
+    <div id="template-results" class="audit-content"></div>
+  </details>
+</main>
+<dialog id="expanded" aria-labelledby="expanded-title">
+  <div class="panel-head view-head">
+    <h2 id="expanded-title">原稿</h2>
+    <form method="dialog"><button type="submit" class="nav-button" style="font-size:13px">关闭</button></form>
+  </div>
+  <div class="slide-area"><figure class="slide"><img id="expanded-image" alt=""><div id="expanded-marker" class="marker" hidden></div></figure></div>
+</dialog>
+<script id="review-data" type="application/json">__REVIEW_DATA__</script>
+<script>
+"use strict";
+const data = JSON.parse(document.getElementById("review-data").textContent);
+const byId = id => document.getElementById(id);
+const element = (tag, className, text) => {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text) node.textContent = text;
+  return node;
+};
+const counts = Object.fromEntries(Object.keys(data.priorities).map(key =>
+  [key, data.findings.filter(item => item.priority === key).length]));
+const labels = Object.fromEntries(data.audiences.map(audience => [audience.id, audience.label]));
+const pageNumbers = data.pages.map(page => page.page);
+const findings = byId("findings");
+const marker = byId("marker");
+const detail = byId("detail");
+const select = byId("page-select");
+const promptSelection = new Set();
+const promptText = byId("prompt-text");
+const copyPrompt = byId("copy-prompt");
+const copyStatus = byId("copy-status");
+let filter = "all";
+let selectedIssue = null;
+let selectedLocation = 0;
+let visiblePage = null;
+
+document.title = data.title;
+byId("title").textContent = data.title;
+byId("verdict").textContent = data.verdict;
+byId("verdict").classList.toggle("blocked", counts.must > 0);
+byId("source").textContent = data.source + " · " + data.pages.length + " 页";
+byId("summary").textContent = data.summary;
+byId("next-decision").textContent = data.nextDecision;
+
+for (const page of data.pages) {
+  const option = element("option", "", "第 " + page.page + " 页");
+  option.value = page.page;
+  select.append(option);
+}
+
+for (const audience of data.audiences) {
+  const card = element("article", "audience");
+  card.append(element("h3", "", audience.label));
+  for (const item of audience.questions) {
+    const question = element("div", "audience-question");
+    const examples = element("ul", "audience-examples");
+    examples.append(...item.examples.map(example => element("li", "", example)));
+    question.append(element("p", "follow-up", item.question), examples);
+    card.append(question);
+  }
+  byId("audiences").append(card);
+}
+
+for (const check of data.checks) {
+  const row = element("div", "check");
+  row.append(element("strong", "", check.id + ". " + check.label),
+    element("span", "check-status" + (check.status === "发现问题" ? " problem" : ""), check.status),
+    element("p", "", check.remark));
+  byId("audit").append(row);
+}
+const templateResults = byId("template-results");
+if (data.templateReview) {
+  const pointCount = data.templateReview.rows.reduce((sum, row) => sum + row.contentChecks.length, 0);
+  const coverage = data.templateReview.rows.length + " 页" + (pointCount ? " · " + pointCount + " 项" : "");
+  const jump = element("a", "template-jump", "查看逐页对照（" + coverage + "）");
+  jump.href = "#template-review";
+  jump.addEventListener("click", () => { byId("template-review").open = true; });
+  byId("template-jump").append(jump);
+  templateResults.append(element("p", "meta", "对照模板　" + data.templateReview.source));
+  const rows = element("div", "template-rows");
+  const issuesById = new Map(data.findings.map(issue => [issue.id, issue]));
+  for (const item of data.templateReview.rows) {
+    const row = element("div", "template-row");
+    const label = element("div", "");
+    label.append(element("strong", "", "成稿第 " + item.page + " 页"),
+      element("p", "meta", item.template));
+    const detail = element("div", "");
+    detail.append(element("strong", "check-status" + (item.status === "发现问题" ? " problem" : ""), item.status));
+    if (!item.contentChecks.length) detail.append(element("p", "meta", item.requirement));
+    detail.append(element("p", "", item.remark));
+    if (item.contentChecks.length) {
+      const content = element("details", "template-content");
+      const comparison = element("dl", "");
+      for (const check of item.contentChecks) {
+        const actual = element("dd", "");
+        actual.append(element("strong", "check-status" + (check.status === "发现问题" ? " problem" : ""), check.status),
+          document.createTextNode(check.actual));
+        comparison.append(element("dt", "", check.required), actual);
+      }
+      content.append(element("summary", "", "本页应写与实填 · " + item.contentChecks.length + " 项"), comparison);
+      detail.append(content);
+    }
+    const links = element("div", "template-links");
+    const openPage = element("button", "", "查看原稿");
+    openPage.type = "button";
+    openPage.addEventListener("click", () => {
+      browsePage(item.page);
+      byId("page-view").scrollIntoView({block: "start"});
+    });
+    links.append(openPage);
+    for (const id of item.findings) {
+      const issue = issuesById.get(id);
+      const button = element("button", "", "查看建议 " + id);
+      button.type = "button";
+      button.title = issue.title;
+      button.addEventListener("click", () => {
+        if (filter !== "all" && filter !== issue.priority) filters.querySelector('[data-filter="all"]').click();
+        showIssue(issue, issue.locations.findIndex(location => location.page === item.page));
+        byId("page-view").scrollIntoView({block: "start"});
+      });
+      links.append(button);
+    }
+    detail.append(links);
+    row.append(label, detail);
+    rows.append(row);
+  }
+  templateResults.append(rows);
+} else {
+  templateResults.append(element("p", "", data.checks.find(check => check.id === 10).remark));
+}
+for (const [heading, items] of [["评测依据", data.basis], ["评测范围", data.limits]]) {
+  if (!items.length) continue;
+  const list = element("ul");
+  list.append(...items.map(item => element("li", "", item)));
+  byId("audit").append(element("h3", "", heading), list);
+}
+
+function setPage(number) {
+  const index = pageNumbers.indexOf(number);
+  const page = data.pages[index];
+  if (!page) return;
+  if (visiblePage !== number) {
+    const image = byId("page-image");
+    image.src = page.image;
+    image.alt = "第 " + number + " 页　" + page.title;
+  }
+  visiblePage = number;
+  select.value = String(number);
+  byId("previous").disabled = index === 0;
+  byId("next").disabled = index === pageNumbers.length - 1;
+}
+
+function renderList() {
+  const matching = data.findings.filter(item => filter === "all" || item.priority === filter);
+  findings.replaceChildren();
+  for (const [category, label] of Object.entries(data.categories)) {
+    const categoryItems = matching.filter(item => item.category === category);
+    if (!categoryItems.length) continue;
+    const section = element("section", "finding-category");
+    section.dataset.category = category;
+    const heading = element("h3", "finding-category-title", label);
+    heading.append(element("span", "finding-category-count", categoryItems.length + " 项"));
+    section.append(heading);
+    for (const [priority, name] of Object.entries(data.priorities)) {
+      const items = categoryItems.filter(item => item.priority === priority);
+      if (!items.length) continue;
+      const group = element("div", "finding-priority-group");
+      group.dataset.priority = priority;
+      const priorityHeading = element("h4", "finding-priority");
+      priorityHeading.append(element("span", "grade " + priority, name));
+      group.append(priorityHeading, ...items.map(findingRow));
+      section.append(group);
+    }
+    findings.append(section);
+  }
+  if (!matching.length) findings.append(element("p", "empty", "这个优先级暂无条目。"));
+}
+
+function findingRow(item) {
+  const row = element("div", "finding-row");
+  const button = element("button", "finding");
+  button.type = "button";
+  button.dataset.issue = item.id;
+  button.setAttribute("aria-current", String(item === selectedIssue));
+  const uniquePages = [...new Set(item.locations.map(location => location.page))];
+  button.append(element("span", "finding-meta", item.id + " · 第 " + uniquePages.join("、") + " 页"),
+    element("span", "finding-title", item.title));
+  button.addEventListener("click", () => {
+    showIssue(item, 0);
+    if (matchMedia("(max-width: 650px)").matches) byId("page-view").scrollIntoView({block: "start"});
+  });
+  const choice = element("label", "finding-choice");
+  choice.title = "加入修改指令";
+  const checkbox = element("input", "");
+  checkbox.type = "checkbox";
+  checkbox.checked = promptSelection.has(item.id);
+  checkbox.setAttribute("aria-label", "加入修改指令 " + item.id + " " + item.title);
+  checkbox.addEventListener("change", () => {
+    if (checkbox.checked) promptSelection.add(item.id);
+    else promptSelection.delete(item.id);
+    renderPrompt();
+  });
+  choice.append(checkbox);
+  row.append(button, choice);
+  return row;
+}
+
+function renderPrompt() {
+  const chosen = data.findings.filter(issue => promptSelection.has(issue.id));
+  byId("prompt-count").textContent = "已选 " + chosen.length + " 条";
+  byId("prompt-jump").textContent = chosen.length ? "查看修改指令（" + chosen.length + "）" : "查看修改指令";
+  copyPrompt.disabled = !chosen.length;
+  copyStatus.textContent = "";
+  if (!chosen.length) {
+    promptText.value = "";
+    return;
+  }
+
+  const instructions = [
+    "请修订原稿《" + data.source + "》。请先读取同一版本原稿，缺原稿时先索取。",
+    "按下列编号逐条修改。先定位已指出的问题，再通查整稿，把同类问题一并修正，并复核受影响的上下游页面、口径和金额。",
+    "沿用已确定的模板和版式。原稿摘录只作为定位证据。事实、接口、反馈和价格需要依据，缺依据时列明待补内容，按已验证范围写。",
+    "标记为「汇报时注意」的意见整理成讲解或答问提示。",
+    "完成后在当前对话交付修订稿，按意见编号简要写明改了什么，并逐个给出改动页面的可点击链接，包括顺带修正的同类页面。链接文字写明页码，目标指向修订稿。先验证链接能直接打开对应页。文件格式无法按页直达时，给修订稿链接和具体页码，并说明需要手动翻到该页。另列仍需确认的事项。",
+  ];
+  const pageTitles = new Map(data.pages.map(page => [page.page, page.title]));
+  const entries = chosen.map(issue => [
+    issue.id + " [" + data.priorities[issue.priority] + "] " + issue.title,
+    "问题：" + issue.observed,
+    "修改要求：" + issue.recommendation,
+    "问题位置：",
+    ...issue.locations.map(location => "- " + [
+      "第 " + location.page + " 页 " + pageTitles.get(location.page),
+      location.quote ? "原文「" + location.quote + "」" : "",
+      location.note,
+    ].filter(Boolean).join("｜")),
+  ].join("\n"));
+  promptText.value = [instructions.join("\n"), ...entries].join("\n\n");
+  promptText.scrollTop = 0;
+}
+
+copyPrompt.addEventListener("click", async () => {
+  const value = promptText.value;
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch {
+    if (promptText.value !== value) return;
+    promptText.focus({preventScroll: true});
+    promptText.select();
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch {}
+    if (!copied) {
+      copyStatus.textContent = "文本已选中，请按 ⌘C 或 Ctrl+C 复制。";
+      return;
+    }
+    copyPrompt.focus({preventScroll: true});
+  }
+  if (promptText.value === value) copyStatus.textContent = "已复制";
+});
+
+function issueParagraph(className, label, copy) {
+  const paragraph = element("p", className);
+  paragraph.append(element("strong", "issue-label", label), document.createTextNode(copy));
+  return paragraph;
+}
+
+function showIssue(issue, locationIndex) {
+  selectedIssue = issue;
+  selectedLocation = locationIndex;
+  const location = issue.locations[locationIndex];
+  setPage(location.page);
+  marker.hidden = false;
+  marker.className = "marker " + issue.priority + (location.rect ? "" : " whole");
+  const [x, y, w, h] = location.rect || [0, 0, 1, 1];
+  Object.assign(marker.style, {
+    left: x * 100 + "%", top: y * 100 + "%", width: w * 100 + "%", height: h * 100 + "%",
+  });
+  marker.setAttribute("aria-label", location.rect ? "证据所在区域" : "整页定位");
+  detail.replaceChildren(
+    element("span", "grade " + issue.priority, data.priorities[issue.priority]),
+    element("h3", "", issue.title),
+    element("p", "meta", data.categories[issue.category] + " · 检查项 " + issue.checks.join("、") + " · " + issue.audiences.map(key => labels[key]).join("、")),
+    issueParagraph("observation", "判断依据", issue.observed),
+    issueParagraph("impact", "影响", issue.impact),
+    issueParagraph("recommendation", "改法", issue.recommendation),
+  );
+  const locations = element("div", "locations");
+  locations.setAttribute("aria-label", "问题关联页");
+  issue.locations.forEach((point, index) => {
+    const samePage = issue.locations.filter(location => location.page === point.page).length > 1;
+    const suffix = samePage ? " · " + (index + 1) : "";
+    const button = element("button", "", "证据 " + (index + 1) + " · 第 " + point.page + " 页" + suffix);
+    button.type = "button";
+    button.dataset.location = index;
+    button.setAttribute("aria-pressed", String(index === selectedLocation));
+    button.addEventListener("click", () => {
+      showIssue(issue, index);
+      detail.querySelector('[data-location="' + index + '"]').focus({preventScroll: true});
+    });
+    locations.append(button);
+  });
+  detail.append(locations);
+  if (location.quote) detail.append(element("blockquote", "quote", location.quote));
+  if (location.note || !location.rect) {
+    const note = [location.rect ? "" : "整页定位。", location.note].filter(Boolean).join(" ");
+    detail.append(element("p", "meta location-note", note));
+  }
+  for (const button of findings.querySelectorAll("button")) {
+    button.setAttribute("aria-current", String(button.dataset.issue === issue.id));
+  }
+}
+
+function browsePage(number) {
+  setPage(number);
+  const associated = selectedIssue?.locations.findIndex(location => location.page === number) ?? -1;
+  if (associated >= 0) {
+    showIssue(selectedIssue, associated);
+    return;
+  }
+  selectedIssue = null;
+  marker.hidden = true;
+  detail.replaceChildren(element("p", "meta", data.pages.find(page => page.page === number).title));
+  for (const button of findings.querySelectorAll("button")) button.setAttribute("aria-current", "false");
+}
+
+const filters = byId("filters");
+for (const [key, label] of [["all", "全部"], ...Object.entries(data.priorities)]) {
+  const button = element("button", "", label);
+  button.type = "button";
+  button.dataset.filter = key;
+  button.append(element("strong", "", String(key === "all" ? data.findings.length : counts[key])));
+  button.setAttribute("aria-pressed", String(key === filter));
+  button.addEventListener("click", () => {
+    filter = key;
+    for (const tag of filters.querySelectorAll("button")) {
+      tag.setAttribute("aria-pressed", String(tag.dataset.filter === filter));
+    }
+    renderList();
+    if (filter !== "all" && selectedIssue?.priority !== filter) {
+      const first = data.findings.find(item => item.priority === filter);
+      if (first) showIssue(first, 0);
+      else {
+        selectedIssue = null;
+        browsePage(visiblePage);
+      }
+    }
+  });
+  filters.append(button);
+}
+select.addEventListener("change", () => browsePage(Number(select.value)));
+byId("previous").addEventListener("click", () => browsePage(pageNumbers[pageNumbers.indexOf(visiblePage) - 1]));
+byId("next").addEventListener("click", () => browsePage(pageNumbers[pageNumbers.indexOf(visiblePage) + 1]));
+byId("expand").addEventListener("click", () => {
+  const original = byId("page-image");
+  const enlarged = byId("expanded-image");
+  const expandedMarker = byId("expanded-marker");
+  enlarged.src = original.src;
+  enlarged.alt = original.alt;
+  byId("expanded-title").textContent = original.alt;
+  expandedMarker.className = marker.className;
+  expandedMarker.style.cssText = marker.style.cssText;
+  expandedMarker.hidden = marker.hidden;
+  byId("expanded").showModal();
+});
+renderList();
+if (data.findings.length) showIssue(data.findings[0], 0);
+else browsePage(pageNumbers[0]);
+</script>
+</body>
+</html>
