@@ -38,11 +38,13 @@ CHECKS = [
     "概算依据与 AI 提效",
     "逐页对照原模板的编写要求",
     "方案完整性",
+    "正文首页目标与价值",
 ]
 STATUSES = {"pass": "通过", "issue": "发现问题", "limited": "材料受限"}
 TEMPLATE_STATUSES = {**STATUSES, "extra": "补充页"}
 TEMPLATE_CHECK = 10
 COMPLETENESS_CHECK = 11
+OBJECTIVES_CHECK = 12
 
 
 def require(condition, message):
@@ -162,6 +164,7 @@ def build_data(index, review, image_dir):
     pages = indexed(index["pages"], "page", "页码")
     require(bool(pages) and all(type(number) is int and number > 0 for number in pages), "请提供实际的正整数页码")
     results = indexed(review["checks"], "id", "检查项")
+    has_objectives_check = OBJECTIVES_CHECK in results
     # Reports created before template checks can still be regenerated.
     if set(results) == set(range(1, TEMPLATE_CHECK)) and "template_review" not in review:
         results[TEMPLATE_CHECK] = {
@@ -173,8 +176,13 @@ def build_data(index, review, image_dir):
             "status": "limited",
             "remark": "本次评测未单独从模板反查全部必写内容。",
         }
+    if set(results) == set(range(1, OBJECTIVES_CHECK)):
+        results[OBJECTIVES_CHECK] = {
+            "status": "limited",
+            "remark": "本次评测未单独核查正文首页的业务目标与价值。",
+        }
     require(set(results) == set(range(1, len(CHECKS) + 1)) and all(type(i) is int for i in results),
-            "请提供十一条检查结论")
+            "请提供十二条检查结论")
     readers = indexed(review["audiences"], "id", "受众")
     require(set(readers) == set(AUDIENCES), "请提供三类甲方受众的判断")
     findings = indexed(review["findings"], "id", "问题编号")
@@ -240,7 +248,8 @@ def build_data(index, review, image_dir):
     basis = [text(item, "评测依据") for item in review["basis"]]
     require(bool(basis), "请提供评测依据")
     must = any(item["priority"] == "must" for item in output_findings)
-    limited = any(item["status"] == "limited" for item in results.values())
+    limited = any(item["status"] == "limited" for number, item in results.items()
+                  if number != OBJECTIVES_CHECK or has_objectives_check)
     verdict = "修订后再汇报" if must else ("关键证据待补" if limited else "可进入汇报")
     return {
         "title": text(review["title"], "报告标题"),

@@ -24,7 +24,7 @@
 - `title`、`summary`、`next_decision` 为字符串。摘要写基于材料的交付判断。下一步写应先解决或明确批准的具体事项。
 - `basis` 为非空字符串数组，列实际审阅文件、页数及主要依据。`limits` 为字符串数组，列证据或范围限制。输入阶段有缺页时在这里记录。
 - `audiences` 为三条对象组成的数组，ID 使用 `digital`、`business`、`executive`。每条用 `question` 写一个代表该角色判断的主问题，用 `examples` 写两三个成稿例子，每例注明页码和缺口。
-- `checks` 为十一条对象组成的数组。每条包含整数 `id`（1 至 11）、`status`（`pass`、`issue`、`limited`）及 `remark`（检查结论）。第 10 条记逐页模板对照，第 11 条记按模板反查出的缺页、缺栏和缺项。
+- 新报告的 `checks` 包含十二条对象。每条填写整数 `id`（1 至 12）、`status`（`pass`、`issue`、`limited`）及 `remark`（检查结论）。第 10 条记逐页模板对照，第 11 条记按模板反查出的缺页、缺栏和缺项。第 12 条注明正文首页实际页码，记录目标的业务价值、与主要建设内容的对应关系，并列出并列短句的逐句字数。发现问题时，关联第 12 项并把首个 `locations` 落到正文首页，后文冲突或支撑页可追加定位。旧报告可按原数据重渲染，未做的新检查显示为材料受限。
 - `template_review` 记录实际模板及逐页对照。填写 `source`（文件名及适用版本）、`rows`（每个成稿页一条）。每条包含 `page`、`template`（模板参考页和用途）、`requirement`（适用要求摘要）、`status`（`pass`、`issue`、`limited` 或 `extra`）、`remark`（实际结论）。发现偏离时，用 `findings` 写关联建议编号数组。关联建议须包含检查项 10，并定位到该页。补充页用 `extra`。缺适用模板时可以省略 `template_review`，第 10 项标 `limited` 并说明缺少的范围。
 - 新报告每个成稿页均填写 `content_checks`，按此页适用栏目逐项记录 `required`（模板应写什么）、`actual`（本页实际写了什么，错位或缺项在哪里）、`status`（`pass`、`issue` 或 `limited`）。通过页也填实际依据。问题项写进本页结论并关联修改建议。
 - `findings` 为问题或汇报提示数组。每条填一个主要类别 `category`。代码为 `template`（模板一致性）、`completeness`（方案完整性）、`logic`（论述逻辑）、`formal`（正式性）、`evidence`（支撑性）、`delivery`（落地性）、`investment`（可决策性）、`communication`（表达清晰性，含 AI 味）。每类内按五级优先级排列。
