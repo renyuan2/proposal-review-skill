@@ -1,4 +1,4 @@
 interface:
   display_name: "甲方视角·解决方案成果评测"
-  short_description: "按十一项标准评审成稿，逐页对照模板并反查缺项"
+  short_description: "检查首页业务目标，按十二项标准逐页评审成稿"
   default_prompt: "用 $proposal-review 从三类甲方受众视角评测这份方案，逐页对照原模板的编写要求和注意事项，生成可点击定位的分级建议报告。"
